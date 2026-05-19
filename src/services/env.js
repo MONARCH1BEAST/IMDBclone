@@ -72,15 +72,19 @@ export function validateEnvironment() {
     activeProvider = "mock (fallback)";
   }
 
-  // Log all warnings to console
+  // Log all warnings to console (only in non-production to avoid noisy logs)
   if (warnings.length > 0) {
-    console.warn(
-      "\n🔍 [Environment Configuration]\n" +
-        warnings.join("\n\n") +
-        `\n\n📌 Active Provider: ${activeProvider}\n`
-    );
+    if (process.env.NODE_ENV !== "production") {
+      console.warn(
+        "\n🔍 [Environment Configuration]\n" +
+          warnings.join("\n\n") +
+          `\n\n📌 Active Provider: ${activeProvider}\n`
+      );
+    }
   } else {
-    console.log(`✅ [Environment] Movie provider configured: ${activeProvider}`);
+    if (process.env.NODE_ENV !== "production") {
+      console.log(`✅ [Environment] Movie provider configured: ${activeProvider}`);
+    }
   }
 
   return {
