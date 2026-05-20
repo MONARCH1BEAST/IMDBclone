@@ -30,8 +30,12 @@ if (process.env.NODE_ENV === 'development') {
   renderApp();
 }
 
-if ('serviceWorker' in navigator) {
-
+// Service worker registration is intentionally disabled in production.
+// The project includes a custom /sw.js that intercepts watchlist API requests.
+// On Vercel this can lead to stale behavior across redeploys and intermittent
+// runtime/network issues. Keeping it for development only preserves
+// offline-queue behavior without risking production stability.
+if (process.env.NODE_ENV === 'development' && 'serviceWorker' in navigator) {
   window.addEventListener('load', function () {
     navigator.serviceWorker
       .register('/sw.js')
@@ -40,6 +44,7 @@ if ('serviceWorker' in navigator) {
       });
   });
 }
+
 
 // If you want to start measuring performance in your app, pass a function
 // to log results (for example: reportWebVitals(console.log))
