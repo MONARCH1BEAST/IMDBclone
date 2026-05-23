@@ -20,6 +20,72 @@ function renderApp() {
   );
 }
 
+const SERVICE_WORKER_CLEANUP_RELOAD_KEY = 'imdb-clone-sw-cleanup-reloaded';
+
+function reloadAfterServiceWorkerCleanup() {
+  if (!navigator.serviceWorker.controller) {
+    return;
+  }
+
+  try {
+    if (window.sessionStorage.getItem(SERVICE_WORKER_CLEANUP_RELOAD_KEY) === 'true') {
+      return;
+    }
+
+    window.sessionStorage.setItem(SERVICE_WORKER_CLEANUP_RELOAD_KEY, 'true');
+  } catch {
+    // If storage is unavailable, a single reload still releases the current page
+    // from the now-unregistered controller in normal browsers.
+  }
+
+  window.location.reload();
+}
+
+function cleanupProductionServiceWorkers() {
+  if (process.env.NODE_ENV !== 'production' || !('serviceWorker' in navigator)) {
+    return;
+  }
+
+  window.addEventListener('load', function () {
+    navigator.serviceWorker
+      .getRegistrations()
+      .then(function (registrations) {
+        if (registrations.length === 0) {
+          return false;
+        }
+
+        return Promise.all(
+          registrations.map(function (registration) {
+            return registration.unregister();
+          })
+        ).then(function () {
+          if (!('caches' in window)) {
+            return true;
+          }
+
+          return window.caches
+            .keys()
+            .then(function (cacheNames) {
+              return Promise.all(
+                cacheNames.map(function (cacheName) {
+                  return window.caches.delete(cacheName);
+                })
+              );
+            })
+            .then(function () {
+              return true;
+            });
+        });
+      })
+      .then(function (hadRegistrations) {
+        if (hadRegistrations) {
+          reloadAfterServiceWorkerCleanup();
+        }
+      })
+      .catch(function () {});
+  });
+}
+
 if (process.env.NODE_ENV === 'development') {
   import('./mocks/browser').then(({ worker }) => {
     worker.start({ onUnhandledRequest: 'bypass' }).then(() => {
@@ -29,6 +95,8 @@ if (process.env.NODE_ENV === 'development') {
 } else {
   renderApp();
 }
+
+cleanupProductionServiceWorkers();
 
 // Service worker registration is intentionally disabled in production.
 // The project includes a custom /sw.js that intercepts watchlist API requests.
